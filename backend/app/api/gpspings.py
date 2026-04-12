@@ -2,8 +2,8 @@ from sqlalchemy import func
 from sqlmodel import select, Session
 from fastapi import APIRouter, Depends
 
-from backend.app.db.session import get_session
-from backend.app.models.gpsping import GPSPing
+from app.db.session import get_session
+from app.models.gpsping import GPSPing
 
 router = APIRouter()
 

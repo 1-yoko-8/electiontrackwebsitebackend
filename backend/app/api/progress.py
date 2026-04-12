@@ -1,75 +1,100 @@
 from fastapi import APIRouter, Depends
 from sqlmodel import Session, select, func
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo  # ✅ modern replacement for pytz
 
-from backend.app.db.session import get_session
-from backend.app.models.taskevent import TaskEvent
-from backend.app.models.polling_station import PollingStation
-from backend.app.models.officer import Officer
-from backend.app.core.dependencies import get_current_admin
+from app.db.session import get_session
+from app.models.report import Report
+from app.core.dependencies import get_current_admin
 
 router = APIRouter()
 
-@router.get("/progress")
-def get_progress(
+IST = ZoneInfo("Asia/Kolkata")  # ✅ IST timezone
+
+
+@router.get("/dashboard")
+def get_dashboard(
     admin=Depends(get_current_admin),
     session: Session = Depends(get_session)
 ):
+    # ---------------- TIME SETUP (IST) ---------------- #
+    now = datetime.now(IST)
+    today = now.date()
 
-    # ---- Total Users ----
-    total_workers = session.exec(
-        select(func.count()).select_from(Officer)
-    ).one()
+    start_today = datetime.combine(today, datetime.min.time(), tzinfo=IST)
+    end_today = start_today + timedelta(days=1)
 
-    # ---- Collected ----
-    collected_completed = session.exec(
-        select(func.count(func.distinct(TaskEvent.username)))
-        .where(TaskEvent.taskName == "COLLECTED")
-    ).one()
+    # ---------------- DISTRICT DETAILS ---------------- #
+    total_polling_locations = session.exec(
+        select(func.sum(Report.polling_locations))
+    ).one_or_none() or 0
 
-    # ---- Started ----
-    started_completed = session.exec(
-        select(func.count(func.distinct(TaskEvent.username)))
-        .where(TaskEvent.taskName == "STARTED")
-    ).one()
+    total_polling_stations = session.exec(
+        select(func.sum(Report.polling_stations))
+    ).one_or_none() or 0
 
-    # ---- Handed Over ----
-    handed_completed = session.exec(
-        select(func.count(func.distinct(TaskEvent.username)))
-        .where(TaskEvent.taskName == "Handed_OVER")
-    ).one()
+    total_mobile_parties = session.exec(
+        select(func.count(Report.id))
+    ).one_or_none() or 0
 
-    # ---- Locations (Reached) ----
-    total_locations = session.exec(
-        select(func.count()).select_from(PollingStation)
-    ).one()
+    total_ballot_boxes = session.exec(
+        select(func.sum(Report.ballot_boxes))
+    ).one_or_none() or 0
 
-    reached_completed = session.exec(
-        select(func.count(func.distinct(TaskEvent.location)))
-        .where(TaskEvent.taskName == "REACHED")
-        .where(TaskEvent.location.isnot(None))   # safety
-        .where(TaskEvent.location != "")
-    ).one()
+    # ---------------- HELPER FUNCTION ---------------- #
+    def get_status_data(time_filter):
 
-    # ---- Response ----
+        collected_count = session.exec(
+            select(func.count(Report.id))
+            .where(Report.ballot_box_collected_status == "Completed")
+            .where(Report.collected_timestamp.isnot(None))
+            .where(*time_filter(Report.collected_timestamp))
+        ).one_or_none() or 0
+
+        collected_boxes = session.exec(
+            select(func.sum(Report.ballot_boxes))
+            .where(Report.ballot_box_collected_status == "Completed")
+            .where(Report.collected_timestamp.isnot(None))
+            .where(*time_filter(Report.collected_timestamp))
+        ).one_or_none() or 0
+
+        handed_count = session.exec(
+            select(func.count(Report.id))
+            .where(Report.ballot_box_handed_over_status == "Completed")
+            .where(Report.handed_over_timestamp.isnot(None))
+            .where(*time_filter(Report.handed_over_timestamp))
+        ).one_or_none() or 0
+
+        handed_boxes = session.exec(
+            select(func.sum(Report.ballot_boxes))
+            .where(Report.ballot_box_handed_over_status == "Completed")
+            .where(Report.handed_over_timestamp.isnot(None))
+            .where(*time_filter(Report.handed_over_timestamp))
+        ).one_or_none() or 0
+
+        return {
+            "collectedAndDeparted": collected_count,
+            "ballotBoxesCollected": collected_boxes,
+            "partiesInTransit": max(0, collected_count - handed_count),
+            "partiesReached": handed_count,
+            "ballotBoxesHandedOver": handed_boxes,
+        }
+
+    # ---------------- TIME FILTERS ---------------- #
+    def is_today(column):
+        return [column >= start_today, column < end_today]
+
+    def is_before_today(column):
+        return [column < start_today]
+
+    # ---------------- RESPONSE ---------------- #
     return {
-        "collected": {
-            "total": total_workers,
-            "completed": collected_completed,
-            "pending": total_workers - collected_completed
+        "districtDetails": {
+            "totalPollingLocations": total_polling_locations,
+            "totalPollingStations": total_polling_stations,
+            "totalMobileParties": total_mobile_parties,
+            "totalBallotBoxes": total_ballot_boxes,
         },
-        "started": {
-            "total": total_workers,
-            "completed": started_completed,
-            "pending": total_workers - started_completed
-        },
-        "reached": {
-            "totalLocations": total_locations,
-            "covered": reached_completed,
-            "pending": total_locations - reached_completed
-        },
-        "handedOver": {
-            "total": total_workers,
-            "completed": handed_completed,
-            "pending": total_workers - handed_completed
-        },
+        "dayBeforeStatus": get_status_data(is_before_today),
+        "pollingDayStatus": get_status_data(is_today),
     }

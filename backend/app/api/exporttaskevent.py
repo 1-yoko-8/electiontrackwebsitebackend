@@ -5,8 +5,8 @@ from fastapi.responses import StreamingResponse
 from io import BytesIO
 from openpyxl import Workbook
 
-from backend.app.db.session import get_session
-from backend.app.models.taskevent import TaskEvent
+from app.db.session import get_session
+from app.models.taskevent import TaskEvent
 
 router = APIRouter()
 

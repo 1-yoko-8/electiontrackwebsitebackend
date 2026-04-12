@@ -1,17 +1,17 @@
 from fastapi import FastAPI
 from sqlmodel import SQLModel
-from backend.app.db.session import engine
+from app.db.session import engine
 from contextlib import asynccontextmanager
 
-from backend.app.models.admin import Admin
-from backend.app.models.officer import Officer
-from backend.app.models.polling_station import PollingStation
+from app.models.admin import Admin
+from app.models.officer import Officer
+from app.models.polling_station import PollingStation
 
-from backend.app.api import auth
-from backend.app.api import excel
-from backend.app.api import progress
-from backend.app.api import taskday
-from backend.app.api import export
+from app.api import auth
+from app.api import excel
+from app.api import progress
+from app.api import taskday
+from app.api import export
 from fastapi.middleware.cors import CORSMiddleware
 
 @asynccontextmanager
