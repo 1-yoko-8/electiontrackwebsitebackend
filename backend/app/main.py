@@ -25,7 +25,7 @@ app = FastAPI(title="Field Worker Tracking API",lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # frontend
+    allow_origins=["*"],  # frontend
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
