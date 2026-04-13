@@ -6,45 +6,56 @@ from io import BytesIO
 from openpyxl import Workbook
 
 from app.db.session import get_session
-from app.models.taskevent import TaskEvent
+from app.models.report import Report
 
 router = APIRouter()
 
+
 @router.get("/export-tasks/{task_date}")
 def export_tasks(task_date: date, session: Session = Depends(get_session)):
-    # Fetch all events
-    events = session.exec(select(TaskEvent)).all()
 
-    # Filter by selected date
-    filtered_events = [e for e in events if e.timestamp.date() == task_date]
+    # ---------------- FETCH REPORTS ----------------
+    reports = session.exec(select(Report)).all()
 
-    if not filtered_events:
+    # ---------------- FILTER BY DATE ----------------
+    # ⚠️ assumes Report has `timestamp` field
+    filtered = [
+        r for r in reports
+        if r.timestamp.date() == task_date
+    ]
+
+    if not filtered:
         raise HTTPException(
             status_code=404,
-            detail="No task events found for this date"
+            detail="No reports found for this date"
         )
 
-    # Create Excel
+    # ---------------- SORT BY USERNAME ----------------
+    filtered.sort(key=lambda r: r.username)
+
+    # ---------------- CREATE EXCEL ----------------
     wb = Workbook()
     ws = wb.active
-    ws.title = "Task Events"
+    ws.title = "Reports"
 
-    # Header
-    ws.append(["ID", "Username", "Task Name", "Timestamp", "Latitude", "Longitude", "Location"])
+    # HEADER
+    ws.append([
+        "Username",
+        "Phone Number",
+        "Ballot Box Status",
+        "Timestamp"
+    ])
 
-    # Data
-    for e in filtered_events:
+    # DATA
+    for r in filtered:
         ws.append([
-            e.id,
-            e.username,
-            e.taskName,
-            e.timestamp.strftime("%Y-%m-%d %H:%M:%S"),  # format nicely
-            e.latitude,
-            e.longitude,
-            e.location or ""
+            r.username,
+            getattr(r, "phone_number", ""),
+            r.ballot_box_handed_over_status,
+            r.timestamp.strftime("%Y-%m-%d %H:%M:%S")
         ])
 
-    # Save to memory
+    # ---------------- STREAM FILE ----------------
     stream = BytesIO()
     wb.save(stream)
     stream.seek(0)
@@ -53,6 +64,6 @@ def export_tasks(task_date: date, session: Session = Depends(get_session)):
         stream,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={
-            "Content-Disposition": f"attachment; filename=tasks_{task_date}.xlsx"
+            "Content-Disposition": f"attachment; filename=reports_{task_date}.xlsx"
         }
     )

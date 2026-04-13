@@ -4,14 +4,14 @@ from app.db.session import engine
 from contextlib import asynccontextmanager
 
 from app.models.admin import Admin
-from app.models.officer import Officer
-from app.models.polling_station import PollingStation
+from app.models.gpsping import GPSPing
+from app.models.report import Report
 
 from app.api import auth
 from app.api import excel
 from app.api import progress
-from app.api import taskday
 from app.api import export
+from app.api import report
 from fastapi.middleware.cors import CORSMiddleware
 
 @asynccontextmanager
@@ -34,5 +34,5 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/admin", tags=["Admin Auth"])
 app.include_router(excel.router, prefix="/admin", tags=["Excel"])
 app.include_router(progress.router, prefix="/admin", tags=["Progress"])
-app.include_router(taskday.router, prefix="/admin", tags=["Task Day"])
 app.include_router(export.router, prefix="/admin", tags=["Export"])
+app.include_router(report.router, prefix="/admin", tags=["Report"])

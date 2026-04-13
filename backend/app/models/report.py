@@ -7,15 +7,15 @@ class Report(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
 
     # --- User Info ---
-    username: str = Field(index=True, unique=True)
-    name: str
-    rank: str
-    contact_number: str = Field(min_length=10, max_length=15)
+    username: str = Field(index=True)  # required
+    name: Optional[str] = None
+    rank: Optional[str] = None
+    contact_number: Optional[str] 
 
     # --- Assignment Info ---
-    polling_stations: int = Field(ge=0)
-    polling_locations: int = Field(ge=0)
-    ballot_boxes: int = Field(ge=0)
+    polling_stations: int = Field(default=0, ge=0)
+    polling_locations: int = Field(default=0, ge=0)
+    ballot_boxes: int = Field(default=0, ge=0)
 
     # --- Collection ---
     ballot_box_collected_status: str = Field(default="Not Completed")
