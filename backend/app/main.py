@@ -9,7 +9,6 @@ from app.models.report import Report
 
 from app.api import auth
 from app.api import progress
-from app.api import export
 from app.api import report
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -32,5 +31,4 @@ app.add_middleware(
 
 app.include_router(auth.router, prefix="/admin", tags=["Admin Auth"])
 app.include_router(progress.router, prefix="/admin", tags=["Progress"])
-app.include_router(export.router, prefix="/admin", tags=["Export"])
 app.include_router(report.router, prefix="/admin", tags=["Report"])
