@@ -10,6 +10,7 @@ from app.models.report import Report
 from app.api import auth
 from app.api import progress
 from app.api import report
+from app.api import exportdata
 from fastapi.middleware.cors import CORSMiddleware
 
 @asynccontextmanager
@@ -32,3 +33,4 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/admin", tags=["Admin Auth"])
 app.include_router(progress.router, prefix="/admin", tags=["Progress"])
 app.include_router(report.router, prefix="/admin", tags=["Report"])
+app.include_router(exportdata.router, prefix="/admin", tags=["Export"])
