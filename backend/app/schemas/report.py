@@ -1,17 +1,17 @@
-from typing import List
-from fastapi import APIRouter, Depends
-from sqlmodel import Session, select
+from pydantic import BaseModel, ConfigDict
+from datetime import datetime
+from typing import Optional
 
-from app.db.session import get_session
-from app.models.report import Report
-from app.schemas.report import ReportResponse
+class ReportResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
 
-router = APIRouter()
+    username: str
+    name: Optional[str]
+    rank: Optional[str]
+    contact_number: Optional[str]
 
+    ballot_box_collected_status: str
+    collected_timestamp: Optional[datetime]
 
-@router.get("/reports", response_model=List[ReportResponse])
-def get_reports(session: Session = Depends(get_session)):
-    stmt = select(Report).order_by(Report.username)
-    results = session.exec(stmt).all()
-
-    return [ReportResponse.model_validate(r) for r in results]
+    ballot_box_handed_over_status: str
+    handed_over_timestamp: Optional[datetime]
