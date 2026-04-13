@@ -4,7 +4,7 @@ from sqlmodel import Session, select
 
 from app.db.session import get_session
 from app.models.report import Report
-from app.schema.report import ReportResponse
+from app.schemas.report import ReportResponse
 
 router = APIRouter()
 
