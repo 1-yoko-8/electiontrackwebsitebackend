@@ -11,7 +11,7 @@ router = APIRouter()
 
 
 @router.post("/login")
-def admin_login(data: LoginRequest, session: Session = Depends(get_session)):
+def admin_login(data: LoginRequest, session: Session = Depends(get_session), admin = Depends(get_current_admin)):
 
     admin = session.exec(
         select(Admin).where(Admin.username == data.username)

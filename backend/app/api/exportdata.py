@@ -8,11 +8,12 @@ from sqlalchemy import func, or_
 
 from app.db.session import get_session
 from app.models.report import Report
+from app.core.dependencies import get_current_admin
 
 router = APIRouter()
 
 @router.get("/export-tasks/{task_date}")
-def export_tasks(task_date: date, session: Session = Depends(get_session)):
+def export_tasks(task_date: date, session: Session = Depends(get_session), admin = Depends(get_current_admin)):
 
     # ---------------- DB FILTER ----------------
     stmt = select(Report).where(
