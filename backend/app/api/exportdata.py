@@ -12,23 +12,29 @@ from app.core.dependencies import get_current_admin
 
 router = APIRouter()
 
-@router.get("/export-tasks/{task_date}")
-def export_tasks(task_date: date, session: Session = Depends(get_session), admin = Depends(get_current_admin)):
+from fastapi import APIRouter, Depends
+from sqlmodel import Session, select
+
+from app.db.session import get_session
+from app.models.task_event import TaskEvent
+from app.models.report import Report
+from app.core.deps import get_current_user
+from app.schemas.tasks import TaskEventRequest
+
+router = APIRouter()
+
+
+@router.get("/export-tasks")
+def export_tasks(session: Session = Depends(get_session), admin = Depends(get_current_admin)):
 
     # ---------------- DB FILTER ----------------
-    stmt = select(Report).where(
-        or_(
-            func.date(Report.collected_timestamp) == task_date,
-            func.date(Report.handed_over_timestamp) == task_date
-        )
-    )
-
+    stmt = select(Report)
     reports = session.exec(stmt).all()
 
     if not reports:
         raise HTTPException(
             status_code=404,
-            detail="No reports found for this date"
+            detail="No reports found"
         )
 
     # ---------------- SORT ----------------
@@ -71,10 +77,13 @@ def export_tasks(task_date: date, session: Session = Depends(get_session), admin
     wb.save(stream)
     stream.seek(0)
 
+    from datetime import datetime
+    filename = f"reports_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.xlsx"
+
     return StreamingResponse(
         stream,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={
-            "Content-Disposition": f"attachment; filename=reports_{task_date}.xlsx"
+            "Content-Disposition": f"attachment; filename={filename}"
         }
     )
