@@ -1,6 +1,7 @@
 from pydantic import BaseModel, ConfigDict
-from datetime import datetime
+from datetime import datetime, date
 from typing import Optional
+
 
 class ReportResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -9,6 +10,9 @@ class ReportResponse(BaseModel):
     name: Optional[str]
     rank: Optional[str]
     contact_number: Optional[str]
+
+    # --- NEW FIELD ---
+    report_date: date
 
     ballot_box_collected_status: str
     collected_timestamp: Optional[datetime]

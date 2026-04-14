@@ -17,7 +17,7 @@ def get_reports(
     admin = Depends(get_current_admin)
 ):
 
-    stmt = select(Report).order_by(cast(Report.username, Integer))
+    stmt = select(Report).order_by(Report.username.asc())
     results = session.exec(stmt).all()
 
     return [ReportResponse.model_validate(r) for r in results]
