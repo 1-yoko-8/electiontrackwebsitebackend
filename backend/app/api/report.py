@@ -11,7 +11,7 @@ router = APIRouter()
 
 
 @router.get("/reports", response_model=List[ReportResponse])
-def get_reports(session: Session = Depends(get_session), ):
+def get_reports(session: Session = Depends(get_session), admin = Depends(get_current_admin)):
     stmt = select(Report).order_by(Report.username)
     results = session.exec(stmt).all()
 

@@ -4,14 +4,12 @@ from sqlmodel import Session, select
 from app.db.session import get_session
 from app.models.admin import Admin
 from app.core.security import verify_password, create_access_token
-from app.core.dependencies import get_current_admin
 from app.schemas.auth import LoginRequest,LogoutRequest
 
 router = APIRouter()
 
-
 @router.post("/login")
-def admin_login(data: LoginRequest, session: Session = Depends(get_session), admin = Depends(get_current_admin)):
+def admin_login(data: LoginRequest, session: Session = Depends(get_session)):
 
     admin = session.exec(
         select(Admin).where(Admin.username == data.username)
