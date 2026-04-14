@@ -67,10 +67,10 @@ def get_dashboard(
 
     # ---------------- TIME FILTERS ---------------- #
     def is_today(column):
-        return [column >= start_today, column < end_today]
+        return [func.date(column) == polling_date]
 
     def is_day_before(column):
-        return [column >= start_day_before, column < start_today]
+        return [func.date(column) == (polling_date - timedelta(days=1))]
 
     # ---------------- RESPONSE ---------------- #
     return {
