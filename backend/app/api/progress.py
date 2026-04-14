@@ -26,23 +26,6 @@ def get_dashboard(
 
     start_day_before = start_today - timedelta(days=1)
 
-    # ---------------- DISTRICT DETAILS ---------------- #
-    total_polling_locations = session.exec(
-        select(func.sum(Report.polling_locations))
-    ).one_or_none() or 0
-
-    total_polling_stations = session.exec(
-        select(func.sum(Report.polling_stations))
-    ).one_or_none() or 0
-
-    total_mobile_parties = session.exec(
-        select(func.count(Report.id))
-    ).one_or_none() or 0
-
-    total_ballot_boxes = session.exec(
-        select(func.sum(Report.ballot_boxes))
-    ).one_or_none() or 0
-
     # ---------------- HELPER FUNCTION ---------------- #
     def get_status_data(time_filter):
 
@@ -92,10 +75,10 @@ def get_dashboard(
     # ---------------- RESPONSE ---------------- #
     return {
         "districtDetails": {
-            "totalPollingLocations": total_polling_locations,
-            "totalPollingStations": total_polling_stations,
-            "totalMobileParties": total_mobile_parties,
-            "totalBallotBoxes": total_ballot_boxes,
+            "totalPollingLocations": 854,
+            "totalPollingStations": 1645,
+            "totalMobileParties": 164,
+            "totalBallotBoxes": 854,
         },
         "dayBeforeStatus": get_status_data(is_day_before),
         "pollingDayStatus": get_status_data(is_today),
