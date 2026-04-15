@@ -11,7 +11,6 @@ class ReportResponse(BaseModel):
     rank: Optional[str]
     contact_number: Optional[str]
 
-    # --- NEW FIELD ---
     report_date: date
 
     ballot_box_collected_status: str
