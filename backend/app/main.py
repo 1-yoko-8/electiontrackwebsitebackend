@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from sqlmodel import SQLModel
 from app.db.session import engine
 from contextlib import asynccontextmanager
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.models.admin import Admin
 from app.models.gpsping import GPSPing
@@ -12,7 +13,7 @@ from app.api import progress
 from app.api import report
 from app.api import exportdata
 from app.api import gpspings
-from fastapi.middleware.cors import CORSMiddleware
+
 
 @asynccontextmanager
 async def lifespan(fastapi_app: FastAPI):
@@ -35,3 +36,4 @@ app.include_router(auth.router, prefix="/admin", tags=["Admin Auth"])
 app.include_router(progress.router, prefix="/admin", tags=["Progress"])
 app.include_router(report.router, prefix="/admin", tags=["Report"])
 app.include_router(exportdata.router, prefix="/admin", tags=["Export"])
+app.include_router(gpspings.router, tags=["GPS_PINGS"])
