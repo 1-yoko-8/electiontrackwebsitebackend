@@ -11,6 +11,7 @@ from app.api import auth
 from app.api import progress
 from app.api import report
 from app.api import exportdata
+from app.api import gpspings
 from fastapi.middleware.cors import CORSMiddleware
 
 @asynccontextmanager
