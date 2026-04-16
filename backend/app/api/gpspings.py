@@ -1,38 +1,47 @@
-from sqlalchemy import func
-from sqlmodel import select, Session
-from fastapi import APIRouter, Depends
-
+from fastapi import APIRouter, Depends, HTTPException
+from sqlmodel import Session
+from datetime import datetime
 from app.db.session import get_session
 from app.models.gpsping import GPSPing
-from app.core.dependencies import get_current_admin
+from app.schemas.gpsping import LocationPingRequest  # your request model
 
 router = APIRouter()
 
-@router.get("/gps/latest")
-def get_latest_gps(
+
+@router.post("/gps/latest")
+def create_gps_ping(
+    ping: LocationPingRequest,
     session: Session = Depends(get_session),
-    admin = Depends(get_current_admin)
 ):
-    # Subquery to get latest timestamp per user
-    subquery = (
-        select(
-            GPSPing.userId,
-            func.max(GPSPing.timestamp).label("max_time")
+    try:
+        # 🚫 Reject invalid coordinates
+        if ping.latitude == 0.0 and ping.longitude == 0.0:
+            raise HTTPException(status_code=400, detail="Invalid location (0,0)")
+
+        # ✅ Ensure timestamp is timezone-aware
+        if ping.timestamp.tzinfo is None:
+            raise HTTPException(status_code=400, detail="Timestamp must be timezone-aware")
+
+        # ✅ Create DB object
+        db_ping = GPSPing(
+            userId=ping.userId,
+            timestamp=ping.timestamp,
+            latitude=ping.latitude,
+            longitude=ping.longitude,
+            currentTask=ping.currentTask,
         )
-        .group_by(GPSPing.userId)
-        .subquery()
-    )
 
-    # Join with main table to get full row
-    query = (
-        select(GPSPing)
-        .join(
-            subquery,
-            (GPSPing.userId == subquery.c.userId) &
-            (GPSPing.timestamp == subquery.c.max_time)
-        )
-    )
+        # ✅ Insert into DB
+        session.add(db_ping)
+        session.commit()
+        session.refresh(db_ping)
 
-    results = session.exec(query).all()
+        # 🔍 Debug log
+        print(f"NEW PING: {db_ping.userId} | {db_ping.timestamp}")
 
-    return [r.model_dump() for r in results]
+        return {"status": "success"}
+
+    except Exception as e:
+        session.rollback()
+        print("ERROR inserting GPS ping:", str(e))
+        raise HTTPException(status_code=500, detail="Failed to insert GPS ping")
