@@ -1,57 +1,38 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session, select
+from sqlalchemy import func
+from sqlmodel import select, Session
+from fastapi import APIRouter, Depends
+
 from app.db.session import get_session
 from app.models.gpsping import GPSPing
-from app.schemas.gpsping import LocationPingRequest
+from app.core.dependencies import get_current_admin
 
 router = APIRouter()
 
-
-@router.post("/location-ping")
-def upsert_location_ping(
-    ping: LocationPingRequest,
+@router.get("/gps/latest")
+def get_latest_gps(
     session: Session = Depends(get_session),
+    admin = Depends(get_current_admin)
 ):
-    try:
-        # 🚫 Reject invalid coords
-        if ping.latitude == 0.0 and ping.longitude == 0.0:
-            raise HTTPException(status_code=400, detail="Invalid location")
+    # Subquery to get latest timestamp per user
+    subquery = (
+        select(
+            GPSPing.userId,
+            func.max(GPSPing.timestamp).label("max_time")
+        )
+        .group_by(GPSPing.userId)
+        .subquery()
+    )
 
-        if ping.timestamp.tzinfo is None:
-            raise HTTPException(status_code=400, detail="Timestamp must be timezone-aware")
+    # Join with main table to get full row
+    query = (
+        select(GPSPing)
+        .join(
+            subquery,
+            (GPSPing.userId == subquery.c.userId) &
+            (GPSPing.timestamp == subquery.c.max_time)
+        )
+    )
 
-        # 🔍 Check if user already exists
-        existing = session.exec(
-            select(GPSPing).where(GPSPing.userId == ping.userId)
-        ).first()
+    results = session.exec(query).all()
 
-        if existing:
-            # ✅ UPDATE
-            existing.timestamp = ping.timestamp
-            existing.latitude = ping.latitude
-            existing.longitude = ping.longitude
-            existing.currentTask = ping.currentTask
-
-            print(f"UPDATED: {existing.userId}")
-
-        else:
-            # ✅ INSERT
-            new_ping = GPSPing(
-                userId=ping.userId,
-                timestamp=ping.timestamp,
-                latitude=ping.latitude,
-                longitude=ping.longitude,
-                currentTask=ping.currentTask,
-            )
-            session.add(new_ping)
-
-            print(f"CREATED: {ping.userId}")
-
-        session.commit()
-
-        return {"status": "success"}
-
-    except Exception as e:
-        session.rollback()
-        print("ERROR:", str(e))
-        raise HTTPException(status_code=500, detail="Failed to upsert GPS ping")
+    return [r.model_dump() for r in results]
