@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends
 from sqlmodel import Session, select, func
-from datetime import datetime, timedelta
-from zoneinfo import ZoneInfo
+from datetime import timedelta
 
 from app.db.session import get_session
 from app.models.report import Report
@@ -10,51 +9,43 @@ from app.core.config import settings
 
 router = APIRouter()
 
-IST = ZoneInfo("Asia/Kolkata")
-
 
 @router.get("/dashboard")
 def get_dashboard(
     admin=Depends(get_current_admin),
     session: Session = Depends(get_session)
 ):
-    # ---------------- TIME SETUP (FROM .env) ---------------- #
-    polling_date = settings.POLLING_DATE
+    # ---------------- STRICT DATE BASED ---------------- #
+    polling_date = settings.POLLING_DATE  # must be datetime.date
 
-    start_today = datetime.combine(polling_date, datetime.min.time(), tzinfo=IST)
-    end_today = start_today + timedelta(days=1)
+    today_date = polling_date
+    yesterday_date = polling_date - timedelta(days=1)
 
-    start_day_before = start_today - timedelta(days=1)
-
-    # ---------------- HELPER FUNCTION ---------------- #
-    def get_status_data(time_filter):
+    # ---------------- HELPER ---------------- #
+    def get_status_data(target_date):
 
         collected_count = session.exec(
             select(func.count(Report.id))
             .where(Report.ballot_box_collected_status == "Completed")
-            .where(Report.collected_timestamp.isnot(None))
-            .where(*time_filter(Report.collected_timestamp))
+            .where(Report.report_date == target_date)
         ).one_or_none() or 0
 
         collected_boxes = session.exec(
             select(func.sum(Report.ballot_boxes))
             .where(Report.ballot_box_collected_status == "Completed")
-            .where(Report.collected_timestamp.isnot(None))
-            .where(*time_filter(Report.collected_timestamp))
+            .where(Report.report_date == target_date)
         ).one_or_none() or 0
 
         handed_count = session.exec(
             select(func.count(Report.id))
             .where(Report.ballot_box_handed_over_status == "Completed")
-            .where(Report.handed_over_timestamp.isnot(None))
-            .where(*time_filter(Report.handed_over_timestamp))
+            .where(Report.report_date == target_date)
         ).one_or_none() or 0
 
         handed_boxes = session.exec(
             select(func.sum(Report.ballot_boxes))
             .where(Report.ballot_box_handed_over_status == "Completed")
-            .where(Report.handed_over_timestamp.isnot(None))
-            .where(*time_filter(Report.handed_over_timestamp))
+            .where(Report.report_date == target_date)
         ).one_or_none() or 0
 
         return {
@@ -65,13 +56,6 @@ def get_dashboard(
             "ballotBoxesHandedOver": handed_boxes,
         }
 
-    # ---------------- TIME FILTERS ---------------- #
-    def is_today(column):
-        return [func.date(column) == polling_date]
-
-    def is_day_before(column):
-        return [func.date(column) == (polling_date - timedelta(days=1))]
-
     # ---------------- RESPONSE ---------------- #
     return {
         "districtDetails": {
@@ -80,6 +64,6 @@ def get_dashboard(
             "totalMobileParties": 164,
             "totalBallotBoxes": 854,
         },
-        "dayBeforeStatus": get_status_data(is_day_before),
-        "pollingDayStatus": get_status_data(is_today),
+        "dayBeforeStatus": get_status_data(yesterday_date),
+        "pollingDayStatus": get_status_data(today_date),
     }
